@@ -2830,79 +2830,59 @@ def create_parser():
 
 
 if __name__ == "__main__":
-
     parser = create_parser()
-
     args = parser.parse_args()
-    # Simulating command-line arguments
-    # args_list = "--theme aliabid94/new-theme --public_url".split()
-    # args = parser.parse_args(args_list)
-
     set_logging_level(args.verbosity_level)
 
-    # [APP] 0 — старт main с параметрами
     logger.info(f"[APP] start | theme={args.theme} lang={args.language} "
                 f"verbosity={args.verbosity_level} public_url={args.public_url} "
                 f"cpu_mode={args.cpu_mode}")
 
-    # [APP] 1 — проверка/докачка UVR моделей
+    # step1 UVR
     logger.info("[APP] step1: checking/downloading UVR models…")
-
     for id_model in UVR_MODELS:
-        download_manager(
-            os.path.join(MDX_DOWNLOAD_LINK, id_model), mdxnet_models_dir
-        )
-
+        download_manager(os.path.join(MDX_DOWNLOAD_LINK, id_model), mdxnet_models_dir)
     logger.info("[APP] step1: UVR models ready")
 
-
+    # step2a RVC models
     logger.info("[APP] step2a: preparing RVC model selection…")
-
-    models_path, index_path = upload_model_list()
-
     try:
-        import os
+        models_path, index_path = upload_model_list()
         mp = os.path.basename(models_path) if models_path else None
         ip = os.path.basename(index_path) if index_path else None
         logger.info(f"[APP] step2a: RVC models ready | models={mp} index={ip}")
-    except Exception:
-        logger.info("[APP] step2a: RVC models ready")
+    except Exception as e:
+        logger.error(f"[APP] step2a failed: {e}")
+        models_path = index_path = None
 
-    # [APP] 2 — инициализация ядра
-
-    logger.info("[APP] step2: initializing core (SoniTranslate)…")
-
+    # step2b core
+    logger.info("[APP] step2b: initializing core (SoniTranslate)…")
     try:
         SoniTr = SoniTranslate(
             cpu_mode=(args.cpu_mode if os.environ.get("ZERO_GPU") != "TRUE" else "cpu"),
             models_path=models_path,
             index_path=index_path,
         )
-    except TypeError:
+    except (TypeError, Exception) as e:
+        logger.warning(f"[APP] init with models failed ({e}); retrying without models_path/index_path")
         SoniTr = SoniTranslate(
             cpu_mode=(args.cpu_mode if os.environ.get("ZERO_GPU") != "TRUE" else "cpu")
         )
+    logger.info("[APP] step2b: core initialized")
 
-    logger.info("[APP] step2: core initialized")
-
-    # [APP] 3 — сборка GUI
+    # step3 GUI
     logger.info("[APP] step3: building GUI…")
-
     lg_conf = get_language_config(language_data, language=args.language)
-
     app = create_gui(args.theme, logs_in_gui=args.logs_in_gui)
-
     logger.info("[APP] step3: GUI built; launching…")
 
-    # [APP] 4 — запуск
-
+    # step4 launch
     app.queue()
-
     app.launch(
         max_threads=1,
         share=args.public_url,
         show_error=True,
         quiet=False,
-        debug=(True if logger.isEnabledFor(logging.DEBUG) else False),
+        debug=logger.isEnabledFor(logging.DEBUG),
     )
 
