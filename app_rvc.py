@@ -2861,28 +2861,27 @@ if __name__ == "__main__":
     models_path, index_path = upload_model_list()
 
     try:
-    import os
-    mp = os.path.basename(models_path) if models_path else None
-    ip = os.path.basename(index_path) if index_path else None
-    logger.info(f"[APP] step2a: RVC models ready | models={mp} index={ip}")
-except Exception:
-    logger.info("[APP] step2a: RVC models ready")
+        import os
+        mp = os.path.basename(models_path) if models_path else None
+        ip = os.path.basename(index_path) if index_path else None
+        logger.info(f"[APP] step2a: RVC models ready | models={mp} index={ip}")
+    except Exception:
+        logger.info("[APP] step2a: RVC models ready")
 
     # [APP] 2 — инициализация ядра
 
     logger.info("[APP] step2: initializing core (SoniTranslate)…")
-    SoniTr = SoniTranslate(cpu_mode=args.cpu_mode)
 
     try:
-    SoniTr = SoniTranslate(
-        cpu_mode=(args.cpu_mode if os.environ.get("ZERO_GPU") != "TRUE" else "cpu"),
-        models_path=models_path,
-        index_path=index_path,
-    )
-except TypeError:
-    SoniTr = SoniTranslate(
-        cpu_mode=(args.cpu_mode if os.environ.get("ZERO_GPU") != "TRUE" else "cpu")
-    )
+        SoniTr = SoniTranslate(
+            cpu_mode=(args.cpu_mode if os.environ.get("ZERO_GPU") != "TRUE" else "cpu"),
+            models_path=models_path,
+            index_path=index_path,
+        )
+    except TypeError:
+        SoniTr = SoniTranslate(
+            cpu_mode=(args.cpu_mode if os.environ.get("ZERO_GPU") != "TRUE" else "cpu")
+        )
 
     logger.info("[APP] step2: core initialized")
 
@@ -2906,3 +2905,4 @@ except TypeError:
         quiet=False,
         debug=(True if logger.isEnabledFor(logging.DEBUG) else False),
     )
+
