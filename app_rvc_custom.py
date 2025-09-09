@@ -1973,6 +1973,39 @@ def create_gui(theme, logs_in_gui=False):
                         info=lg_conf["editor_sub_info"],
                         placeholder=lg_conf["editor_sub_ph"],
                     )
+                    # >>> NEW: кнопка для скачивания субтитров
+                    with gr.Row(visible=False) as srt_row:
+                        sec_per_line = gr.Slider(
+                            0.5, 10.0, value=3.0, step=0.5,
+                            label="Seconds per subtitle line"
+                        )
+                        gen_srt_btn = gr.Button("Download subtitles (.srt)")
+                        srt_file_out = gr.File(
+                            label="Your subtitles",
+                            interactive=False,
+                            visible=False,
+                        )
+
+                    def _toggle_srt_row(flag):
+                        return gr.Row.update(visible=bool(flag))
+
+                    edit_sub_check.change(
+                        _toggle_srt_row,
+                        inputs=edit_sub_check,
+                        outputs=srt_row,
+                    )
+
+                    def _gen_srt(text_val, sec, video_file):
+                        video_path = video_file.name if video_file and hasattr(video_file, "name") else ""
+                        path = export_srt_file(text_val or "", "", sec, video_path=video_path)
+                        return path, gr.File.update(visible=True)
+
+                    gen_srt_btn.click(
+                        _gen_srt,
+                        inputs=[subs_edit_space, sec_per_line, video_input],
+                        outputs=[srt_file_out, srt_file_out],
+                    )
+                    # <<< NEW
                     edit_sub_check.change(
                         visible_component_subs,
                         [edit_sub_check],
@@ -2885,4 +2918,3 @@ if __name__ == "__main__":
         quiet=False,
         debug=logger.isEnabledFor(logging.DEBUG),
     )
-
