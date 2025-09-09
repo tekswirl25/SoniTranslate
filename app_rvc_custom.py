@@ -2024,25 +2024,6 @@ def create_gui(theme, logs_in_gui=False):
                         gen_srt_btn = gr.Button("Generate .srt")
                         srt_file_out = gr.File(label="Download .srt", interactive=False, visible=False)
 
-                def _toggle_srt_row(flag):
-                    return gr.Row.update(visible=bool(flag))
-
-                edit_sub_check.change(
-                    _toggle_srt_row,
-                    inputs=edit_sub_check,
-                    outputs=srt_row,
-                )
-
-                def _gen_srt(text_val, sec, video_file):
-                    video_path = video_file.name if video_file and hasattr(video_file, "name") else ""
-                    path = export_srt_file(text_val or "", "", sec, video_path=video_path)
-                    return path, gr.File.update(visible=True)
-
-                gen_srt_btn.click(
-                    _gen_srt,
-                    inputs=[subs_edit_space, sec_per_line, video_input],
-                    outputs=[srt_file_out, srt_file_out],
-                )
 
 
 
