@@ -133,24 +133,24 @@ def _make_srt_from_text_or_json(raw_text: str, text_json: str | dict = "", sec_p
 
     return srt.compose(subs)
 
-def export_srt_file(raw_text: str, text_json: str, sec_per_line: float = 3.0, file_stem: str = "edited") -> str:
+def export_srt_file(raw_text: str, text_json: str, sec_per_line: float = 3.0, video_path: str = "", file_stem: str = "edited") -> str:
     srt_str = _make_srt_from_text_or_json(raw_text, text_json, sec_per_line)
-    os.makedirs("outputs", exist_ok=True)
 
-    # берём имя mp4 без расширения
-    if video_path and os.path.exists(video_path):
+    os.makedirs("outputs", exist_ok=True)
+    timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+
+    if video_path:
         base = os.path.splitext(os.path.basename(video_path))[0]
     else:
         base = file_stem
 
-    # добавляем дату
-    timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
     filename = f"{base}_{timestamp}.srt"
-
     path = os.path.join("outputs", filename)
+
     with open(path, "w", encoding="utf-8") as f:
         f.write(srt_str)
     return path
+
 
 
 directories = [
@@ -2006,17 +2006,6 @@ def create_gui(theme, logs_in_gui=False):
                         False,
                         visible=False,
                     )
-
-                    def visible_component_subs(input_bool):
-                        if input_bool:
-                            return gr.update(visible=True), gr.update(
-                                visible=True
-                            )
-                        else:
-                            return gr.update(visible=False), gr.update(
-                                visible=False
-                            )
-
                     subs_button = gr.Button(
                         lg_conf["button_subs"],
                         variant="primary",
@@ -2029,6 +2018,45 @@ def create_gui(theme, logs_in_gui=False):
                         info=lg_conf["editor_sub_info"],
                         placeholder=lg_conf["editor_sub_ph"],
                     )
+
+                    with gr.Row(visible=False) as srt_row:
+                        sec_per_line = gr.Slider(0.5, 10.0, value=3.0, step=0.5, label="Seconds per subtitle line")
+                        gen_srt_btn = gr.Button("Generate .srt")
+                        srt_file_out = gr.File(label="Download .srt", interactive=False, visible=False)
+
+                def _toggle_srt_row(flag):
+                    return gr.Row.update(visible=bool(flag))
+
+                edit_sub_check.change(
+                    _toggle_srt_row,
+                    inputs=edit_sub_check,
+                    outputs=srt_row,
+                )
+
+                def _gen_srt(text_val, sec, video_file):
+                    video_path = video_file.name if video_file and hasattr(video_file, "name") else ""
+                    path = export_srt_file(text_val or "", "", sec, video_path=video_path)
+                    return path, gr.File.update(visible=True)
+
+                gen_srt_btn.click(
+                    _gen_srt,
+                    inputs=[subs_edit_space, sec_per_line, video_input],
+                    outputs=[srt_file_out, srt_file_out],
+                )
+
+
+
+                    def visible_component_subs(input_bool):
+                        if input_bool:
+                            return gr.update(visible=True), gr.update(
+                                visible=True
+                            )
+                        else:
+                            return gr.update(visible=False), gr.update(
+                                visible=False
+                            )
+
+
 
 
                     with gr.Row(visible=False) as srt_row:
