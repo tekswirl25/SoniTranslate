@@ -96,62 +96,6 @@ import argparse
 import time
 import hashlib
 import sys
-# --- SRT helpers ---
-from datetime import timedelta
-import srt
-
-def _make_srt_from_text_or_json(raw_text: str, text_json: str | dict = "", sec_per_line: float = 3.0) -> str:
-    """
-    Делает полноценный .srt:
-    - если есть JSON сегменты со start/end/text — берёт их,
-    - иначе делит строки равномерно по sec_per_line секунд.
-    """
-    data = {}
-    if isinstance(text_json, str) and text_json.strip():
-        try:
-            data = json.loads(text_json)
-        except Exception:
-            data = {}
-    elif isinstance(text_json, dict):
-        data = text_json
-
-    subs = []
-    if isinstance(data, dict) and "segments" in data:
-        for i, seg in enumerate(data["segments"], 1):
-            start = float(seg.get("start", (i - 1) * sec_per_line))
-            end = float(seg.get("end", start + sec_per_line))
-            txt = (seg.get("text") or "").strip()
-            if not txt:
-                continue
-            subs.append(srt.Subtitle(i, timedelta(seconds=start), timedelta(seconds=end), txt))
-    else:
-        lines = [ln.strip() for ln in (raw_text or "").splitlines() if ln.strip()]
-        t = 0.0
-        for i, line in enumerate(lines, 1):
-            subs.append(srt.Subtitle(i, timedelta(seconds=t), timedelta(seconds=t + sec_per_line), line))
-            t += sec_per_line
-
-    return srt.compose(subs)
-
-def export_srt_file(raw_text: str, text_json: str, sec_per_line: float = 3.0, video_path: str = "", file_stem: str = "edited") -> str:
-    srt_str = _make_srt_from_text_or_json(raw_text, text_json, sec_per_line)
-
-    os.makedirs("outputs", exist_ok=True)
-    timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-
-    if video_path:
-        base = os.path.splitext(os.path.basename(video_path))[0]
-    else:
-        base = file_stem
-
-    filename = f"{base}_{timestamp}.srt"
-    path = os.path.join("outputs", filename)
-
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(srt_str)
-    return path
-
-
 
 directories = [
     "downloads",
@@ -2006,6 +1950,17 @@ def create_gui(theme, logs_in_gui=False):
                         False,
                         visible=False,
                     )
+
+                    def visible_component_subs(input_bool):
+                        if input_bool:
+                            return gr.update(visible=True), gr.update(
+                                visible=True
+                            )
+                        else:
+                            return gr.update(visible=False), gr.update(
+                                visible=False
+                            )
+
                     subs_button = gr.Button(
                         lg_conf["button_subs"],
                         variant="primary",
@@ -2018,72 +1973,11 @@ def create_gui(theme, logs_in_gui=False):
                         info=lg_conf["editor_sub_info"],
                         placeholder=lg_conf["editor_sub_ph"],
                     )
-
-                    with gr.Row(visible=False) as srt_row:
-                        sec_per_line = gr.Slider(0.5, 10.0, value=3.0, step=0.5, label="Seconds per subtitle line")
-                        gen_srt_btn = gr.Button("Generate .srt")
-                        srt_file_out = gr.File(label="Download .srt", interactive=False, visible=False)
-
-
-
-
-                    def visible_component_subs(input_bool):
-                        if input_bool:
-                            return gr.update(visible=True), gr.update(
-                                visible=True
-                            )
-                        else:
-                            return gr.update(visible=False), gr.update(
-                                visible=False
-                            )
-
-
-
-
-                    with gr.Row(visible=False) as srt_row:
-                        sec_per_line = gr.Slider(
-                            0.5, 10.0, value=3.0, step=0.5,
-                            label="Seconds per subtitle line"
-                        )
-                        gen_srt_btn = gr.Button("Generate .srt")
-                        srt_file_out = gr.File(
-                            label="Download .srt",
-                            interactive=False,
-                            visible=False,
-                        )
-
-                def _toggle_srt_row(flag):
-                    return gr.Row.update(visible=bool(flag))
-
-
-
-                edit_sub_check.change(
-                    _toggle_srt_row,
-                    inputs=edit_sub_check,
-                    outputs=srt_row,
-                )
-
-                def _gen_srt(text_val, sec, video_file):
-                    # если у вас нет text_json_tb — просто передавайте ""
-                    video_path = ""
-                    if video_file and hasattr(video_file, "name"):
-                        video_path = video_file.name
-                    path = export_srt_file(text_val or "", "", sec, video_path=video_path)
-                    return path, gr.File.update(visible=True)
-
-                gen_srt_btn.click(
-                    _gen_srt,
-                    inputs=[subs_edit_space, sec_per_line, video_input],
-                    outputs=[srt_file_out, srt_file_out],
-                )
-
-                edit_sub_check.change(
-                    visible_component_subs,
-                    [edit_sub_check],
-                    [subs_button, subs_edit_space],
-                )
-
-
+                    edit_sub_check.change(
+                        visible_component_subs,
+                        [edit_sub_check],
+                        [subs_button, subs_edit_space],
+                    )
 
                     with gr.Row():
                         video_button = gr.Button(
@@ -2991,3 +2885,4 @@ if __name__ == "__main__":
         quiet=False,
         debug=logger.isEnabledFor(logging.DEBUG),
     )
+
