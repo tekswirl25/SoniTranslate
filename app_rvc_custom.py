@@ -97,6 +97,33 @@ import time
 import hashlib
 import sys
 
+from datetime import timedelta
+import srt
+
+# >>> NEW: экспорт субтитров в .srt
+def _make_srt_from_text(text: str, sec_per_line: float = 3.0) -> str:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    subs = []
+    t = 0.0
+    for i, line in enumerate(lines, 1):
+        start = timedelta(seconds=t)
+        end = timedelta(seconds=t + sec_per_line)
+        subs.append(srt.Subtitle(index=i, start=start, end=end, content=line))
+        t += sec_per_line
+    return srt.compose(subs)
+
+def export_srt_file(raw_text: str, text_json: str = "", sec_per_line: float = 3.0, video_path: str = "", file_stem: str = "edited") -> str:
+    srt_str = _make_srt_from_text(raw_text, sec_per_line)
+    os.makedirs("outputs", exist_ok=True)
+    timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    base = os.path.splitext(os.path.basename(video_path))[0] if video_path else file_stem
+    filename = f"{base}_{timestamp}.srt"
+    path = os.path.join("outputs", filename)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(srt_str)
+    return path
+# <<< NEW
+
 directories = [
     "downloads",
     "logs",
